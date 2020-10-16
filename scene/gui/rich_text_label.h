@@ -148,6 +148,7 @@ private:
 
 	struct ItemImage : public Item {
 		Ref<Texture> image;
+		bool modulate;
 		Size2 size;
 		ItemImage() { type = ITEM_IMAGE; }
 	};
@@ -409,7 +410,7 @@ protected:
 public:
 	String get_text();
 	void add_text(const String &p_text);
-	void add_image(const Ref<Texture> &p_image, const int p_width = 0, const int p_height = 0);
+	void add_image(const Ref<Texture> &p_image, const int p_width = 0, const int p_height = 0, bool modulate = false);
 	void add_newline();
 	bool remove_line(const int p_line);
 	void push_font(const Ref<Font> &p_font);
@@ -481,6 +482,9 @@ public:
 
 	void set_use_bbcode(bool p_enable);
 	bool is_using_bbcode() const;
+
+	void set_modulate_images(bool p_enable);
+	bool is_modulating_images() const;
 
 	void set_bbcode(const String &p_bbcode);
 	String get_bbcode() const;

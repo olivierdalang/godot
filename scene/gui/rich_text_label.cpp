@@ -645,8 +645,12 @@ int RichTextLabel::_process_line(ItemFrame *p_frame, const Vector2 &p_ofs, int &
 				if (visible)
 					line_is_blank = false;
 
+				Color color = Color(1, 1, 1);
+				if (img->modulate)
+					color = _find_color(img, color);
+
 				if (p_mode == PROCESS_DRAW && visible) {
-					img->image->draw_rect(ci, Rect2(p_ofs + Point2(align_ofs + wofs, y + lh - font->get_descent() - img->size.height), img->size));
+					img->image->draw_rect(ci, Rect2(p_ofs + Point2(align_ofs + wofs, y + lh - font->get_descent() - img->size.height), img->size), false, color);
 				}
 				p_char_count++;
 
@@ -1672,7 +1676,7 @@ void RichTextLabel::_remove_item(Item *p_item, const int p_line, const int p_sub
 	}
 }
 
-void RichTextLabel::add_image(const Ref<Texture> &p_image, const int p_width, const int p_height) {
+void RichTextLabel::add_image(const Ref<Texture> &p_image, const int p_width, const int p_height, bool modulate) {
 
 	if (current->type == ITEM_TABLE)
 		return;
@@ -1681,6 +1685,7 @@ void RichTextLabel::add_image(const Ref<Texture> &p_image, const int p_width, co
 	ItemImage *item = memnew(ItemImage);
 
 	item->image = p_image;
+	item->modulate = modulate;
 
 	if (p_width > 0) {
 		// custom width
@@ -2123,7 +2128,7 @@ Error RichTextLabel::append_bbcode(const String &p_bbcode) {
 
 			tag_stack.pop_front();
 			pos = brk_end + 1;
-			if (tag != "/img")
+			if (tag != "/img" && tag != "/modimg" )
 				pop();
 
 		} else if (tag == "b") {
@@ -2237,7 +2242,7 @@ Error RichTextLabel::append_bbcode(const String &p_bbcode) {
 			push_meta(url);
 			pos = brk_end + 1;
 			tag_stack.push_front("url");
-		} else if (tag == "img") {
+		} else if (tag == "img" || tag == "modimg") {
 
 			int end = p_bbcode.find("[", brk_end);
 			if (end == -1)
@@ -2245,18 +2250,22 @@ Error RichTextLabel::append_bbcode(const String &p_bbcode) {
 
 			String image = p_bbcode.substr(brk_end + 1, end - brk_end - 1);
 
+			bool modulate = tag == "modimg";
+
 			Ref<Texture> texture = ResourceLoader::load(image, "Texture");
 			if (texture.is_valid())
-				add_image(texture);
+				add_image(texture, 0, 0, modulate);
 
 			pos = end;
 			tag_stack.push_front(tag);
-		} else if (tag.begins_with("img=")) {
+		} else if (tag.begins_with("img=") || tag.begins_with("modimg=")) {
 
 			int width = 0;
 			int height = 0;
 
-			String params = tag.substr(4, tag.length());
+			bool modulate = tag.begins_with("modimg=");
+
+			String params = tag.substr(modulate ? 7 : 4, tag.length());
 			int sep = params.find("x");
 			if (sep == -1) {
 				width = params.to_int();
@@ -2273,10 +2282,10 @@ Error RichTextLabel::append_bbcode(const String &p_bbcode) {
 
 			Ref<Texture> texture = ResourceLoader::load(image, "Texture");
 			if (texture.is_valid())
-				add_image(texture, width, height);
+				add_image(texture, width, height, modulate);
 
 			pos = end;
-			tag_stack.push_front("img");
+			tag_stack.push_front(modulate ? "modimg" : "img");
 		} else if (tag.begins_with("color=")) {
 
 			String col = tag.substr(6, tag.length());
@@ -2737,7 +2746,7 @@ void RichTextLabel::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_text"), &RichTextLabel::get_text);
 	ClassDB::bind_method(D_METHOD("add_text", "text"), &RichTextLabel::add_text);
 	ClassDB::bind_method(D_METHOD("set_text", "text"), &RichTextLabel::set_text);
-	ClassDB::bind_method(D_METHOD("add_image", "image", "width", "height"), &RichTextLabel::add_image, DEFVAL(0), DEFVAL(0));
+	ClassDB::bind_method(D_METHOD("add_image", "image", "width", "height", "modulate"), &RichTextLabel::add_image, DEFVAL(0), DEFVAL(0), DEFVAL(false));
 	ClassDB::bind_method(D_METHOD("newline"), &RichTextLabel::add_newline);
 	ClassDB::bind_method(D_METHOD("remove_line", "line"), &RichTextLabel::remove_line);
 	ClassDB::bind_method(D_METHOD("push_font", "font"), &RichTextLabel::push_font);
